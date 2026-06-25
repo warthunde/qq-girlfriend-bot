@@ -1,0 +1,49 @@
+# =============================================================
+# QQ 赛博女友 - .gitignore
+# =============================================================
+
+# ---- 敏感信息 ----
+.env
+*.env
+!*.env.example
+
+# ---- QQ 登录态数据（含个人信息）----
+napcat/qq_data/
+napcat/data/
+napcat/qq/
+
+# ---- NapCat 账号专属配置（自动生成）----
+napcat/config/napcat_*.json
+napcat/config/napcat_protocol_*.json
+napcat/config/onebot11_*.json
+!napcat/config/onebot11_YOUR_QQ.json
+napcat/config/webui.json
+napcat/config/passkey.json
+
+# ---- AstrBot 运行时数据 ----
+astrbot/data/
+
+# ---- Docker 相关 ----
+docker-compose.override.yml
+
+# ---- 临时文件 ----
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+qrcode.png
+
+# ---- IDE ----
+.idea/
+.vscode/
+*.code-workspace
+
+# ---- 系统文件 ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 打包文件 ----
+*.tar.gz
+*.zip

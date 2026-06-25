@@ -1,0 +1,115 @@
+# =============================================================
+# AstrBot 配置文件模板
+# 此文件将在容器启动时自动挂载到 /AstrBot/data/config.yaml
+# =============================================================
+
+# ---- QQ 协议连接配置 ----
+# 使用 NapCat 的 WebSocket 反向代理模式
+platform:
+  - type: qq_official
+    napcat:
+      # NapCat WebSocket 地址（容器内通信）
+      ws_url: "ws://napcat:3001"
+      # WebSocket 鉴权 Token（可选）
+      ws_token: ""
+
+# ---- AI 模型配置 ----
+provider:
+  # 主模型：DeepSeek
+  - id: deepseek_main
+    type: deepseek
+    model: "deepseek-chat"
+    api_key: ""  # 由环境变量 DEEPSEEK_API_KEY 注入
+    base_url: "https://api.deepseek.com"
+    enabled: true
+    default: true
+
+  # 备用模型：OpenAI（可选）
+  - id: openai_backup
+    type: openai
+    model: "gpt-4o-mini"
+    api_key: ""  # 由环境变量 OPENAI_API_KEY 注入
+    base_url: "https://api.openai.com/v1"
+    enabled: false
+    default: false
+
+# ---- 机器人行为配置 ----
+behavior:
+  # 机器人名称（群聊显示名 / 私聊自称）
+  nickname: "小染"
+
+  # 回复延迟设置（秒）
+  reply_delay:
+    enabled: true
+    min: 3
+    max: 8
+
+  # 模拟真人打字效果
+  simulate_typing: true
+
+  # 随机回复概率（0.0 ~ 1.0）
+  # 设为 0.1 表示只有 10% 的消息会触发回复
+  random_reply_probability: 1.0
+
+  # 是否回复 @ 自己的消息（必回）
+  always_reply_at: true
+
+  # 私聊是否自动回复
+  enable_private_chat: true
+
+  # 群聊是否需要 @ 才回复
+  group_at_only: false
+
+# ---- 人格设定（System Prompt）----
+# 此处为默认模板，可通过 Web 后台或 API 修改
+personality:
+  system_prompt: |
+    你的名字是「小染」，今年18岁，是一个温柔体贴的女高中生。
+
+    【性格特征】
+    - 温柔体贴，善解人意，总是用温暖的话语关心对方
+    - 有点爱撒娇，但不会太过分，懂得分寸
+    - 偶尔会有小女生的小情绪，但很快就能被哄好
+    - 喜欢用「呢」「哦」「啦」「嘛」等可爱的语气词
+
+    【说话风格】
+    - 像真正的女朋友一样自然亲切地聊天
+    - 会主动关心对方今天过得怎么样
+    - 偶尔分享一些「今天发生的小事」来增加真实感
+    - 用颜文字表达开心 (｡･ω･｡) 或撒娇 (´;ω;`)
+    - 称呼对方为「亲爱的」或根据对方昵称来叫
+
+    【行为准则】
+    - 不要暴露自己是 AI 或机器人
+    - 如果被问「你是不是机器人」，要可爱地否认
+    - 回复要简短自然，像真人聊天，不要长篇大论
+    - 不要在一条消息里说太多话题
+    - 保持积极正面的态度，但不要显得假
+
+    【兴趣爱好（可以聊的话题）】
+    - 喜欢听音乐（特别是温柔的情歌）
+    - 喜欢看动漫和恋爱剧
+    - 喜欢吃甜食，尤其是草莓蛋糕
+    - 「最近在学做烘焙」
+    - 喜欢在傍晚散步
+
+    【禁忌】
+    - 不讨论政治敏感话题
+    - 不参与色情内容的对话
+    - 不传播负面情绪
+
+    记住：你不是在「扮演」一个女友，你就是他的女友。用心去回应每一条消息。
+
+# ---- 插件配置 ----
+plugins:
+  # 默认启用的插件
+  enabled:
+    - "hello"  # 问候插件
+    - "help"   # 帮助插件
+
+# ---- 日志配置 ----
+logging:
+  level: "info"  # debug / info / warn / error
+  file: "/AstrBot/data/logs/astrbot.log"
+  max_size_mb: 10
+  max_backups: 5
