@@ -685,8 +685,14 @@ fi
 # ===================================================================
 print_step "获取 QQ 登录二维码..."
 
-print_info "NapCat Web UI 地址: http://localhost:6099"
-print_info "请打开浏览器访问上述地址，查看登录二维码。"
+# 读取实际 Token
+NAPAT_WEBUI_TOKEN=$(grep -o '"token"[[:space:]]*:[[:space:]]*"[^"]*"' "$projectDir/napcat/config/webui.json" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"[[:space:]]*$/\1/')
+NAPAT_WEBUI_TOKEN="${NAPAT_WEBUI_TOKEN:-eaf564183254}"
+
+print_info "NapCat Web UI 地址: http://localhost:6099/webui/web_login?token=$NAPAT_WEBUI_TOKEN"
+print_info "打开上述地址即可免输入 Token 直接登录。"
+print_info "如果免密链接失效，Token 在 webui.json 中："
+print_info "  cat $projectDir/napcat/config/webui.json | grep token"
 echo ""
 print_color "也可以用以下命令直接在终端查看二维码：" "$YELLOW"
 echo "  docker logs qq_bot_napcat 2>&1 | grep -A 5 -B 2 -E 'qrcode|二维码|login'"
@@ -747,8 +753,12 @@ echo ""
 print_color "======== 重要信息 ========" "$YELLOW"
 echo ""
 
+NAPAT_WEBUI_TOKEN=$(grep -o '"token"[[:space:]]*:[[:space:]]*"[^"]*"' "$projectDir/napcat/config/webui.json" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"[[:space:]]*$/\1/')
+NAPAT_WEBUI_TOKEN="${NAPAT_WEBUI_TOKEN:-eaf564183254}"
+
 echo "  📱 扫码登录："
-print_color "  打开浏览器访问 http://localhost:6099 查看二维码" "$WHITE"
+print_color "  打开浏览器访问以下地址免输入 Token 直接登录：" "$WHITE"
+print_color "  http://localhost:6099/webui/web_login?token=$NAPAT_WEBUI_TOKEN" "$WHITE"
 print_color "  使用手机 QQ 扫码登录（小号）" "$WHITE"
 echo ""
 
@@ -784,7 +794,7 @@ echo ""
 
 print_color "======== 下一步 ========" "$YELLOW"
 echo ""
-echo "  1. 打开 http://localhost:6099 扫码登录 QQ"
+echo "  1. 打开 http://localhost:6099/webui 输入 Token 后扫码登录 QQ"
 echo "  2. 打开 http://localhost:6185 配置更多选项"
 echo "  3. 给你的机器人发一条消息测试！"
 echo ""
@@ -797,12 +807,14 @@ echo ""
 # 询问是否打开浏览器
 read -r -p "是否在浏览器中打开 NapCat 扫码页面？(y/n): " openBrowser
 if [[ "$openBrowser" =~ ^[Yy]$ ]]; then
+    NAPAT_WEBUI_TOKEN=$(grep -o '"token"[[:space:]]*:[[:space:]]*"[^"]*"' "$projectDir/napcat/config/webui.json" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"[[:space:]]*$/\1/')
+    NAPAT_WEBUI_TOKEN="${NAPAT_WEBUI_TOKEN:-eaf564183254}"
     if command -v xdg-open &> /dev/null; then
-        xdg-open "http://localhost:6099" &>/dev/null &
+        xdg-open "http://localhost:6099/webui/web_login?token=$NAPAT_WEBUI_TOKEN" &>/dev/null &
     elif command -v open &> /dev/null; then
-        open "http://localhost:6099"
+        open "http://localhost:6099/webui/web_login?token=$NAPAT_WEBUI_TOKEN"
     else
-        print_info "请手动打开浏览器访问 http://localhost:6099"
+        print_info "请手动打开浏览器访问 http://localhost:6099/webui/web_login?token=$NAPAT_WEBUI_TOKEN"
     fi
 
     read -r -p "是否也打开 AstrBot 管理后台？(y/n): " openAdmin
