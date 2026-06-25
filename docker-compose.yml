@@ -79,6 +79,8 @@ services:
       - ./astrbot/data:/AstrBot/data
       # AstrBot 配置文件挂载
       - ./config/astrbot_config.yaml:/AstrBot/data/config.yaml:ro
+      # 表情包图片目录
+      - ./stickers:/AstrBot/stickers
 
     environment:
       # ---- 基础配置 ----
