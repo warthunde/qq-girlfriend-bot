@@ -124,15 +124,20 @@ class BandOrchestrator:
         # 2. 等待 WebSocket 全部上线（最多等 2 分钟）
         await self._wait_for_connections(timeout=120)
 
-        # 3. 启动小剧场
-        await self.theater.start()
+        # 3. 启动小剧场（可选）
+        enable_theater = os.getenv("ENABLE_THEATER", "").lower() in ("1", "true", "yes")
+        if enable_theater:
+            await self.theater.start()
+            ts_label = f"  小剧场: {self.config.theater_interval_min//60}-{self.config.theater_interval_max//60} 分钟"
+        else:
+            ts_label = "  小剧场: 关闭"
 
         logger.info("=" * 60)
         logger.info("🎸 Band Orchestrator RUNNING")
         logger.info(f"   群号: {self.config.target_group_id}")
         logger.info(f"   成员: {', '.join(self.persona_mgr.get_all_names().values())}")
-        logger.info(f"   小剧场间隔: {self.config.theater_interval_min//60}-"
-                    f"{self.config.theater_interval_max//60} 分钟")
+        logger.info(ts_label)
+        logger.info("  模式: 纯被动 — 发消息就聊，聊完就停")
         logger.info("=" * 60)
 
         # 4. 等待 shutdown 信号

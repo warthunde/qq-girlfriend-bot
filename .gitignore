@@ -43,6 +43,10 @@ napcat_ryo/config/onebot11_*.json
 napcat_kita/config/napcat_*.json
 napcat_kita/config/onebot11_*.json
 !napcat_kita/config/onebot11_template.json
+napcat_nijika/config/passkey.json
+napcat_bocchi/config/passkey.json
+napcat_ryo/config/passkey.json
+napcat_kita/config/passkey.json
 
 # ---- Orchestrator 运行时 ----
 orchestrator/logs/

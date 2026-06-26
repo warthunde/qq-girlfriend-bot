@@ -10,6 +10,7 @@ Message Handler — 即兴 Jam Session 模式
 import asyncio
 import logging
 import random
+import re
 import time
 from collections import deque
 
@@ -65,7 +66,6 @@ class MessageHandler:
         self._session_task: asyncio.Task | None = None
         self._session_msg_count = 0
         self._session_max = 0
-        self._session_cooldown_until: float = 0
         self._last_speaker: str | None = None  # 上一轮发言的 bot id
 
         # 小剧场（保留，但 jam session 期间不触发）
@@ -126,12 +126,25 @@ class MessageHandler:
             else:
                 logger.debug(f"[MSG] BAND[{self._band_qq_to_id[sender_qq]}] {sender_name}: {raw_text[:60]}")
 
-            # 如果 session 已激活，消息被 session 循环感知（通过上下文）
-            if self._session_active:
-                return  # session 循环会自动看到新消息并决定是否回应
+            # 停止命令
+            if re.search(r'别聊了|停一下|停|别说了|shut\s*up|stop', clean_text, re.I):
+                if self._session_active:
+                    self._session_task.cancel()
+                    self._session_active = False
+                    logger.info("JAM: stopped by user command")
+                    # 随机一个成员回应
+                    await self._reply_as_random_member(sender_name, sender_qq, "好的收到")
+                    return
 
-            # 如果 session 未激活且冷却已过 → 启动新 session
-            if time.time() > self._session_cooldown_until:
+            # 如果 session 已激活，人类消息打断并回应
+            if self._session_active:
+                if not is_band:
+                    logger.info(f"[MSG] HUMAN(interrupt) {sender_name}: {raw_text[:60]}")
+                    await self._reply_as_random_member(sender_name, sender_qq, clean_text)
+                return
+
+            # 如果 session 未激活，启动新 session
+            if not self._session_active:
                 self._session_task = asyncio.create_task(self._run_jam_session())
 
         except Exception as e:
@@ -187,12 +200,9 @@ class MessageHandler:
                     f"{self._accounts_map[speaker]}: {reply[:60]}"
                 )
 
-                # 检查是否应该自然停止
-                if self._should_end_early():
-                    logger.info("JAM: natural ending (conversation fading)")
-                    break
 
             logger.info(f"🎵 JAM SESSION END ({self._session_msg_count} msgs)")
+            logger.info("JAM: waiting for next trigger...")
 
         except asyncio.CancelledError:
             logger.info("JAM: cancelled")
@@ -200,10 +210,6 @@ class MessageHandler:
             logger.error(f"JAM session error: {e}", exc_info=True)
         finally:
             self._session_active = False
-            # 冷却
-            cooldown = random.randint(15, 30) * 60
-            self._session_cooldown_until = time.time() + cooldown
-            logger.info(f"JAM cooldown: {cooldown//60} minutes")
 
     def _pick_next_speaker(self) -> str:
         """选下一个发言者，尽量避免同一人连续说话太多次"""
@@ -220,14 +226,23 @@ class MessageHandler:
         # 加权随机：优先选 bot，最近没说过话的权重大
         return random.choice(candidates)
 
-    def _should_end_early(self) -> bool:
-        """自然结束判断"""
-        if self._session_msg_count < 10:
-            return False  # 至少聊 10 条
-        # 15 条后 5% 概率自然结束
-        if self._session_msg_count < 15:
-            return random.random() < 0.03
-        return random.random() < 0.06
+    async def _reply_as_random_member(
+        self, sender_name: str, sender_qq: str, text: str
+    ):
+        """随机选一个成员回复人类（不启动 Jam Session）"""
+        member_id = random.choice(list(self.clients.keys()))
+        client = self.clients.get(member_id)
+        if not client or not client.connected:
+            return
+        reply = await self.engine.generate_human_reply(
+            member_id, sender_name, text,
+            recent_context=list(self._recent_messages),
+        )
+        if reply:
+            await asyncio.sleep(random.uniform(1, 3))
+            await client.send_group_text(self.config.target_group_id, reply)
+            self._add_context(self._accounts_map[member_id], reply)
+            logger.info(f"  REPLY [{member_id}] to {sender_name}: {reply[:60]}")
 
     @staticmethod
     def _clean_cq(text: str) -> str:
