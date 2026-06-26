@@ -106,6 +106,15 @@ class MessageHandler:
             if group_id != self.config.target_group_id:
                 return
 
+            # 紧急停止命令 — 放在去重之前，确保始终有效
+            raw = str(event.get("raw_message", ""))
+            if re.search(r'别聊了|停一下|都停|别说了|shut\s*up|^stop$|^停$', raw[:20], re.I):
+                if self._session_active:
+                    self._session_task.cancel()
+                    self._session_active = False
+                    logger.info("JAM: EMERGENCY STOP")
+                return
+
             # 去重：用 (group_id, message_id)
             # 注意：不同 NapCat 可能给同一消息不同的 message_id
             # 所以额外用 (group_id, sender_qq, raw_text[:30]) 做二次去重
@@ -125,16 +134,6 @@ class MessageHandler:
                 self._last_human_activity = time.time()
             else:
                 logger.debug(f"[MSG] BAND[{self._band_qq_to_id[sender_qq]}] {sender_name}: {raw_text[:60]}")
-
-            # 停止命令
-            if re.search(r'别聊了|停一下|停|别说了|shut\s*up|stop', clean_text, re.I):
-                if self._session_active:
-                    self._session_task.cancel()
-                    self._session_active = False
-                    logger.info("JAM: stopped by user command")
-                    # 随机一个成员回应
-                    await self._reply_as_random_member(sender_name, sender_qq, "好的收到")
-                    return
 
             # 如果 session 已激活，人类消息打断并回应
             if self._session_active:
@@ -156,20 +155,23 @@ class MessageHandler:
         """即兴 Jam Session：Bot 们围绕群聊内容自然接话"""
         self._session_active = True
         self._session_msg_count = 0
-        self._session_max = random.randint(30, 50)
+        self._session_max = random.randint(15, 25)
         self._last_speaker = None
+        self._send_failures = 0
 
         logger.info(f"🎵 JAM SESSION START (budget: {self._session_max} msgs)")
 
         try:
-            # 先等 1-3 秒，收集上下文
             await asyncio.sleep(random.uniform(1, 3))
 
             while self._session_msg_count < self._session_max:
-                # 选下一个发言者：优先选最近没说过话的
+                # 发送失败太多 → 风控，立即停止
+                if self._send_failures >= 3:
+                    logger.warning("JAM: ABORTED — too many send failures (QQ 风控)")
+                    break
+
                 speaker = self._pick_next_speaker()
 
-                # 生成回复
                 reply = await self.engine.generate_jam_reply(
                     member_id=speaker,
                     members_map=self._accounts_map,
@@ -178,18 +180,19 @@ class MessageHandler:
                 )
 
                 if not reply:
-                    # 生成失败，换个人试试
                     continue
 
-                # 延迟发送
-                delay = random.uniform(2, 6)
-                await asyncio.sleep(delay)
+                # 延迟 8-15s 避免风控
+                await asyncio.sleep(random.uniform(8, 15))
 
-                # 发送
                 client = self.clients[speaker]
                 ok = await client.send_group_text(self.config.target_group_id, reply)
                 if not ok:
+                    self._send_failures += 1
+                    logger.warning(f"  JAM: send failed ({self._send_failures}/3)")
                     continue
+                else:
+                    self._send_failures = 0
 
                 self._add_context(self._accounts_map[speaker], reply)
                 self._session_msg_count += 1

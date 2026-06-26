@@ -192,7 +192,7 @@ class NapcatClient:
             "message": message,
         }
 
-        for attempt in range(3):
+        for attempt in range(1):  # 不重试，1 次失败就返回
             try:
                 async with self._session.post(
                     url, json=payload, timeout=aiohttp.ClientTimeout(total=10)
