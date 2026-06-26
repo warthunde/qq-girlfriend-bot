@@ -1,135 +1,206 @@
 # =============================================================
-# QQ 赛博女友 - Docker Compose 配置
-# 使用 AstrBot + NapCat 方案
+# 纽带乐队四人组 — Docker Compose 配置
+# 4 × NapCat (QQ 协议) + 1 × Band Orchestrator (AI 调度)
 # =============================================================
 #
-# 架构说明：
-#   NapCat  (QQ 协议层) ←→ AstrBot (AI 对话引擎)
-#   端口 3001              端口 6185 (Web 管理后台)
-#   端口 6099 (Web UI)
+# 架构：
+#   NapCat ×4  ←──WS/HTTP──→  Band Orchestrator  ──HTTP──→  DeepSeek API
+#   端口各不同                   (Python asyncio)
 #
-# 使用方法：
-#   docker compose up -d
+# 每个 NapCat 容器内部使用相同端口 (3000/3001/6099)
+# 宿主机端口映射区分：
+#   虹夏:   WS 3001, HTTP 3010, WebUI 6100
+#   波奇酱: WS 3002, HTTP 3020, WebUI 6101
+#   山田凉: WS 3003, HTTP 3030, WebUI 6102
+#   喜多:   WS 3004, HTTP 3040, WebUI 6103
 # =============================================================
 
+x-napcat-common: &napcat-common
+  image: mlikiowa/napcat-docker:latest
+  restart: unless-stopped
+  environment:
+    NAPCAT_GID: "0"
+    NAPCAT_UID: "0"
+    WS_ENABLE: "true"
+    WS_PORT: "3001"
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
-  # =============================================================
-  # NapCat - QQ 机器人协议层
-  # 负责与 QQ 服务器通信，提供 WebSocket 接口供 AstrBot 连接
-  # =============================================================
-  napcat:
-    image: mlikiowa/napcat-docker:latest
-    container_name: qq_bot_napcat
+
+  # ===========================================================
+  # NapCat — 虹夏 (伊地知虹夏 / Nijika)
+  # QQ 号: ${NIJIKA_QQ}
+  # ===========================================================
+  napcat_nijika:
+    <<: *napcat-common
+    container_name: qq_band_nijika
+    ports:
+      - "${NIJIKA_WS_PORT:-3001}:3001"
+      - "${NIJIKA_HTTP_PORT:-3010}:3000"
+      - "${NIJIKA_WEBUI_PORT:-6100}:6099"
+    volumes:
+      - ./napcat_nijika/config:/app/napcat/config
+      - ./napcat/qq_data:/app/.config/QQ          # 复用现有登录态
+      - ./napcat_nijika/data:/app/.napcat/data
+      - ./napcat_nijika/qq:/app/.napcat/qq
+      - ./stickers:/app/stickers:ro               # 表情包（只读）
+
+  # ===========================================================
+  # NapCat — 波奇酱 (后藤一里 / Bocchi)
+  # QQ 号: ${BOCCHI_QQ}
+  # ===========================================================
+  napcat_bocchi:
+    <<: *napcat-common
+    container_name: qq_band_bocchi
+    ports:
+      - "${BOCCHI_WS_PORT:-3002}:3001"
+      - "${BOCCHI_HTTP_PORT:-3020}:3000"
+      - "${BOCCHI_WEBUI_PORT:-6101}:6099"
+    volumes:
+      - ./napcat_bocchi/config:/app/napcat/config
+      - ./napcat_bocchi/qq_data:/app/.config/QQ
+      - ./napcat_bocchi/data:/app/.napcat/data
+      - ./napcat_bocchi/qq:/app/.napcat/qq
+      - ./stickers:/app/stickers:ro               # 表情包（只读）
+
+  # ===========================================================
+  # NapCat — 山田凉 (Yamada Ryo)
+  # QQ 号: ${RYO_QQ}
+  # ===========================================================
+  napcat_ryo:
+    <<: *napcat-common
+    container_name: qq_band_ryo
+    ports:
+      - "${RYO_WS_PORT:-3003}:3001"
+      - "${RYO_HTTP_PORT:-3030}:3000"
+      - "${RYO_WEBUI_PORT:-6102}:6099"
+    volumes:
+      - ./napcat_ryo/config:/app/napcat/config
+      - ./napcat_ryo/qq_data:/app/.config/QQ
+      - ./napcat_ryo/data:/app/.napcat/data
+      - ./napcat_ryo/qq:/app/.napcat/qq
+      - ./stickers:/app/stickers:ro               # 表情包（只读）
+
+  # ===========================================================
+  # NapCat — 喜多郁代 (Kita Ikuyo)
+  # QQ 号: ${KITA_QQ}
+  # ===========================================================
+  napcat_kita:
+    <<: *napcat-common
+    container_name: qq_band_kita
+    ports:
+      - "${KITA_WS_PORT:-3004}:3001"
+      - "${KITA_HTTP_PORT:-3040}:3000"
+      - "${KITA_WEBUI_PORT:-6103}:6099"
+    volumes:
+      - ./napcat_kita/config:/app/napcat/config
+      - ./napcat_kita/qq_data:/app/.config/QQ
+      - ./napcat_kita/data:/app/.napcat/data
+      - ./napcat_kita/qq:/app/.napcat/qq
+      - ./stickers:/app/stickers:ro               # 表情包（只读）
+
+  # ===========================================================
+  # Band Orchestrator — AI 对话调度引擎
+  # 连接 4 个 NapCat，管理消息分发和小剧场
+  # ===========================================================
+  orchestrator:
+    build: ./orchestrator
+    container_name: qq_band_orchestrator
     restart: unless-stopped
 
-    environment:
-      # NapCat 基础配置
-      - NAPCAT_GID=0
-      - NAPCAT_UID=0
-      # 启用 WebSocket 服务（供 AstrBot 连接）
-      - WS_ENABLE=true
-      # WebSocket 监听端口
-      - WS_PORT=3001
-      # Token（可选，用于鉴权，留空则不校验）
-      - WS_TOKEN=${NAPAT_WS_TOKEN:-}
+    env_file:
+      - .env
 
-    ports:
-      # NapCat Web UI（用于扫码登录和查看状态）
-      - "6099:6099"
-      # WebSocket 服务端口（供 AstrBot 连接）
-      - "3001:3001"
+    environment:
+      # ── 各 Bot 连接地址（容器内网络）──
+      - NIJIKA_WS_URL=ws://napcat_nijika:3001
+      - NIJIKA_HTTP_URL=http://napcat_nijika:3000
+      - BOCCHI_WS_URL=ws://napcat_bocchi:3001
+      - BOCCHI_HTTP_URL=http://napcat_bocchi:3000
+      - RYO_WS_URL=ws://napcat_ryo:3001
+      - RYO_HTTP_URL=http://napcat_ryo:3000
+      - KITA_WS_URL=ws://napcat_kita:3001
+      - KITA_HTTP_URL=http://napcat_kita:3000
+
+      # ── DeepSeek API ──
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      - AI_MODEL=${AI_MODEL:-deepseek-chat}
+
+      # ── 乐队配置 ──
+      - NIJIKA_QQ=${NIJIKA_QQ}
+      - BOCCHI_QQ=${BOCCHI_QQ}
+      - RYO_QQ=${RYO_QQ}
+      - KITA_QQ=${KITA_QQ}
+      - TARGET_GROUP_ID=${TARGET_GROUP_ID}
+
+      # ── 小剧场参数 ──
+      - THEATER_INTERVAL_MIN=${THEATER_INTERVAL_MIN:-30}
+      - THEATER_INTERVAL_MAX=${THEATER_INTERVAL_MAX:-60}
+      - MESSAGE_INTERVAL_MIN=${MESSAGE_INTERVAL_MIN:-5}
+      - MESSAGE_INTERVAL_MAX=${MESSAGE_INTERVAL_MAX:-20}
+
+      # ── 人类回复参数 ──
+      - HUMAN_REPLY_DELAY_MIN=${HUMAN_REPLY_DELAY_MIN:-3}
+      - HUMAN_REPLY_DELAY_MAX=${HUMAN_REPLY_DELAY_MAX:-8}
+
+      # ── 日志 ──
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
 
     volumes:
-      # NapCat 持久化数据（登录态、缓存等）
-      - ./napcat/data:/app/.napcat/data
-      # NapCat 配置文件（OneBot 配置等）
-      - ./napcat/config:/app/napcat/config
-      # QQ 协议配置文件
-      - ./napcat/qq:/app/.napcat/qq
-      # QQ 登录态持久化（避免每次重启扫码）
-      - ./napcat/qq_data:/app/.config/QQ
+      - ./orchestrator/logs:/app/logs
+      - ./stickers:/app/stickers:ro
 
-    # 注意：NapCat 首次启动需要扫码登录，登录前 WebSocket 不可用
-    # 因此不做健康检查，登录后 AstrBot 会自动重连
+    depends_on:
+      - napcat_nijika
+      - napcat_bocchi
+      - napcat_ryo
+      - napcat_kita
 
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # =============================================================
-  # AstrBot - AI 聊天机器人引擎
-  # 连接 NapCat 的 WebSocket，负责 AI 对话逻辑
-  # =============================================================
+  # ===========================================================
+  # (可选) AstrBot — 保留原有的独立虹夏 Bot
+  # 仅在你想要独立使用虹夏 Bot（不通过编排器）时启用
+  # 启用方法: docker compose --profile astrbot up -d
+  # ===========================================================
   astrbot:
     image: soulter/astrbot:latest
     container_name: qq_bot_astrbot
     restart: unless-stopped
+    profiles:
+      - astrbot  # 默认不启动，需要 --profile astrbot
 
     ports:
-      # AstrBot Web 管理后台
       - "6185:6185"
-      # AstrBot WebSocket 端口（供 NapCat 反向连接）
       - "6199:6199"
 
     volumes:
-      # AstrBot 数据持久化（配置、插件、日志等）
       - ./astrbot/data:/AstrBot/data
-      # AstrBot 配置文件挂载
       - ./config/astrbot_config.yaml:/AstrBot/data/config.yaml:ro
-      # 表情包图片目录
       - ./stickers:/AstrBot/stickers
 
     environment:
-      # ---- 基础配置 ----
-      # QQ 号码
-      - QQ_ACCOUNT=${QQ_ACCOUNT}
-      # 机器人昵称
+      - QQ_ACCOUNT=${NIJIKA_QQ}
       - BOT_NICKNAME=${BOT_NICKNAME:-小染}
-
-      # ---- AI 模型配置 ----
-      # AI 提供商：deepseek / openai
       - AI_PROVIDER=${AI_PROVIDER:-deepseek}
-      # DeepSeek API Key
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      # OpenAI API Key（备用）
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      # AI 模型名称
-      - AI_MODEL=${AI_MODEL:-deepseek-chat}
-      # DeepSeek API Base URL（可切换为国内代理）
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
-
-      # ---- 人格配置 ----
-      # 系统提示词（人格设定）
-      - SYSTEM_PROMPT=${SYSTEM_PROMPT}
-
-      # ---- 行为配置 ----
-      # 随机延迟回复（秒）
+      - AI_MODEL=${AI_MODEL:-deepseek-chat}
+      - NAPCAT_WS_URL=ws://napcat_nijika:3001
+      - NAPCAT_WS_TOKEN=${NAPAT_WS_TOKEN:-}
       - REPLY_DELAY_MIN=${REPLY_DELAY_MIN:-3}
       - REPLY_DELAY_MAX=${REPLY_DELAY_MAX:-8}
-      # 模拟打字效果
       - SIMULATE_TYPING=${SIMULATE_TYPING:-true}
-
-      # ---- NapCat 连接配置 ----
-      # NapCat WebSocket 地址（容器内网络通信）
-      - NAPCAT_WS_URL=ws://napcat:3001
-      # NapCat WS Token（与上面保持一致）
-      - NAPCAT_WS_TOKEN=${NAPAT_WS_TOKEN:-}
-
-    # 等待 NapCat 容器启动后再启动（登录完成后会自动连接）
-    depends_on:
-      - napcat
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - ALLOWED_GROUP_IDS=${ALLOWED_GROUP_IDS:-}
+      - BLOCKED_GROUP_IDS=${BLOCKED_GROUP_IDS:-}
+      - ALLOWED_USER_IDS=${ALLOWED_USER_IDS:-}
 
     logging:
       driver: "json-file"
       options:
         max-size: "20m"
         max-file: "5"
-
-# =============================================================
-# 网络说明
-# 两个容器共享 Docker 默认 bridge 网络，
-# AstrBot 通过 napcat:3001 访问 NapCat WebSocket
-# =============================================================

@@ -1,0 +1,14 @@
+{
+    "host": "::",
+    "port": 6099,
+    "token": "ryo_band_token_2024",
+    "loginRate": 10,
+    "autoLoginAccount": "",
+    "disableWebUI": false,
+    "accessControlMode": "none",
+    "ipWhitelist": [],
+    "ipBlacklist": [],
+    "enableXForwardedFor": false,
+    "enable2FA": false,
+    "totpSecret": ""
+}

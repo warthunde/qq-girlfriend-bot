@@ -1,0 +1,38 @@
+{
+  "network": {
+    "httpServers": [
+      {
+        "name": "Orchestrator HTTP",
+        "enable": true,
+        "host": "0.0.0.0",
+        "port": 3000,
+        "enableCors": true,
+        "token": ""
+      }
+    ],
+    "httpSseServers": [],
+    "httpClients": [],
+    "websocketServers": [
+      {
+        "name": "Orchestrator WS",
+        "enable": true,
+        "host": "0.0.0.0",
+        "port": 3001,
+        "enableCors": true,
+        "token": ""
+      }
+    ],
+    "websocketClients": [],
+    "plugins": []
+  },
+  "musicSignUrl": "",
+  "enableLocalFile2Url": false,
+  "parseMultMsg": false,
+  "imageDownloadProxy": "",
+  "timeout": {
+    "baseTimeout": 10000,
+    "uploadSpeedKBps": 256,
+    "downloadSpeedKBps": 256,
+    "maxTimeout": 1800000
+  }
+}

@@ -1,0 +1,4 @@
+aiohttp>=3.9
+openai>=1.30
+pyyaml>=6.0
+python-dotenv>=1.0

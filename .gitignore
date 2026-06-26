@@ -11,14 +11,42 @@
 napcat/qq_data/
 napcat/data/
 napcat/qq/
+napcat_nijika/qq_data/
+napcat_nijika/data/
+napcat_nijika/qq/
+napcat_bocchi/qq_data/
+napcat_bocchi/data/
+napcat_bocchi/qq/
+napcat_ryo/qq_data/
+napcat_ryo/data/
+napcat_ryo/qq/
+napcat_kita/qq_data/
+napcat_kita/data/
+napcat_kita/qq/
 
-# ---- NapCat 账号专属配置（自动生成）----
+# ---- NapCat 账号专属配置（自动生成，含 QQ 号）----
 napcat/config/napcat_*.json
 napcat/config/napcat_protocol_*.json
 napcat/config/onebot11_*.json
 !napcat/config/onebot11_YOUR_QQ.json
 napcat/config/webui.json
 napcat/config/passkey.json
+napcat_nijika/config/napcat_*.json
+napcat_nijika/config/onebot11_*.json
+!napcat_nijika/config/onebot11_template.json
+napcat_bocchi/config/napcat_*.json
+napcat_bocchi/config/onebot11_*.json
+!napcat_bocchi/config/onebot11_template.json
+napcat_ryo/config/napcat_*.json
+napcat_ryo/config/onebot11_*.json
+!napcat_ryo/config/onebot11_template.json
+napcat_kita/config/napcat_*.json
+napcat_kita/config/onebot11_*.json
+!napcat_kita/config/onebot11_template.json
+
+# ---- Orchestrator 运行时 ----
+orchestrator/logs/
+orchestrator/__pycache__/
 
 # ---- AstrBot 运行时数据 ----
 astrbot/data/
